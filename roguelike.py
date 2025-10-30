@@ -7,6 +7,17 @@ import random
 import os
 import sys
 
+# Platform-specific imports for keyboard input
+try:
+    if os.name == 'nt':  # Windows
+        import msvcrt
+    else:  # Unix-like
+        import tty
+        import termios
+except ImportError:
+    # Fallback to standard input if platform-specific modules not available
+    pass
+
 
 class Entity:
     """Base class for all game entities (player, enemies, etc.)"""
@@ -115,13 +126,19 @@ class GameMap:
     
     def create_corridor(self, x1, y1, x2, y2):
         """Create an L-shaped corridor between two points"""
-        # Horizontal first
-        for x in range(min(x1, x2), max(x1, x2) + 1):
+        # Calculate coordinate ranges
+        min_x = min(x1, x2)
+        max_x = max(x1, x2)
+        min_y = min(y1, y2)
+        max_y = max(y1, y2)
+        
+        # Horizontal corridor
+        for x in range(min_x, max_x + 1):
             if 0 <= x < self.width and 0 <= y1 < self.height:
                 self.tiles[y1][x] = '.'
         
-        # Then vertical
-        for y in range(min(y1, y2), max(y1, y2) + 1):
+        # Vertical corridor
+        for y in range(min_y, max_y + 1):
             if 0 <= x2 < self.width and 0 <= y < self.height:
                 self.tiles[y][x2] = '.'
     
@@ -181,11 +198,14 @@ class Game:
         # Place enemies
         self.enemies = []
         num_enemies = min(len(self.game_map.rooms) * 2, 8)
-        for i in range(num_enemies):
-            room_idx = (i % (len(self.game_map.rooms) - 1)) + 1  # Skip first room
-            enemy_pos = self.game_map.get_random_room_position(room_idx)
-            enemy_type = 'goblin' if random.random() < 0.7 else 'orc'
-            self.enemies.append(Enemy(enemy_pos[0], enemy_pos[1], enemy_type))
+        
+        # Only place enemies if we have more than one room
+        if len(self.game_map.rooms) > 1:
+            for i in range(num_enemies):
+                room_idx = (i % (len(self.game_map.rooms) - 1)) + 1  # Skip first room
+                enemy_pos = self.game_map.get_random_room_position(room_idx)
+                enemy_type = 'goblin' if random.random() < 0.7 else 'orc'
+                self.enemies.append(Enemy(enemy_pos[0], enemy_pos[1], enemy_type))
         
         self.messages = []
         self.running = True
@@ -307,11 +327,8 @@ class Game:
             # Get player input
             try:
                 if os.name == 'nt':  # Windows
-                    import msvcrt
                     key = msvcrt.getch().decode('utf-8').lower()
                 else:  # Unix-like
-                    import tty
-                    import termios
                     fd = sys.stdin.fileno()
                     old_settings = termios.tcgetattr(fd)
                     try:
@@ -319,7 +336,8 @@ class Game:
                         key = sys.stdin.read(1).lower()
                     finally:
                         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-            except:
+            except (ImportError, OSError, AttributeError):
+                # Fallback to standard input if platform-specific input not available
                 key = input("Enter command (w/a/s/d/q): ").lower()
             
             # Process input
