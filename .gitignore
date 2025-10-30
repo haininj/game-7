@@ -1,0 +1,20 @@
+# Build files
+/build/
+/bin/
+/Debug/
+/Release/
+
+# Editor files
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Data generated at runtime
+*.sav
+*.log
